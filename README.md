@@ -39,7 +39,7 @@
 自动扫描本地已安装的 Agent 工具，无需手动指定路径：
 - ✅ Claude Code
 - ✅ Codex CLI  
-- ✅ OpenCode 及其衍生版本（deveco、codeagent 等）
+- ✅ OpenCode 及其衍生版本
 
 ### 🎨 美观界面，舒适体验
 - 深色主题，护眼舒适
@@ -195,7 +195,6 @@ agent-chat-hub/
 │   │   ├── base.py           # 解析器基类
 │   │   ├── claude_code.py    # Claude Code 解析器
 │   │   ├── opencode.py       # OpenCode 解析器
-│   │   └── codex_cli.py      # Codex CLI 解析器
 │   └── static/
 │       └── index.html        # 前端页面
 ├── requirements.txt
