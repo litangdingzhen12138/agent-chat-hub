@@ -140,8 +140,6 @@ pkill -f "python -m app.main"
 | 🟠 **Claude Code** | `~/.claude/projects/` | ✅ |
 | 🔵 **Codex CLI** | `~/.codex/sessions/` + `history.jsonl` | ✅ |
 | 🟢 **OpenCode** | `~/.local/share/opencode/` | ✅ |
-| 🟢 **deveco** | `~/.local/share/deveco/` | ✅ |
-| 🟢 **codeagent** | `~/.local/share/codeagent/` | ✅ |
 | 🟢 **其他衍生版** | `~/.local/share/<名称>/` | ✅ |
 
 > 💡 所有基于 OpenCode 的衍生工具都会被自动识别，无需额外配置。
@@ -270,8 +268,6 @@ The browser will automatically open at `http://localhost:8765`.
 | 🟠 Claude Code | `~/.claude/projects/` | ✅ |
 | 🔵 Codex CLI | `~/.codex/sessions/` | ✅ |
 | 🟢 OpenCode | `~/.local/share/opencode/` | ✅ |
-| 🟢 deveco | `~/.local/share/deveco/` | ✅ |
-| 🟢 codeagent | `~/.local/share/codeagent/` | ✅ |
 
 ### Tech Stack
 
