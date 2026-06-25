@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Chat Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { colors: {
+                dark: { 50:'#f8fafc',100:'#f1f5f9',200:'#e2e8f0',300:'#cbd5e1',400:'#94a3b8',500:'#64748b',600:'#475569',700:'#334155',800:'#1e293b',900:'#0f172a',950:'#020617' }
+            }}}
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+        .markdown-body h1 { font-size: 1.4em; font-weight: 700; margin: 0.8em 0 0.4em; }
+        .markdown-body h2 { font-size: 1.2em; font-weight: 600; margin: 0.6em 0 0.3em; }
+        .markdown-body h3 { font-size: 1.05em; font-weight: 600; margin: 0.5em 0 0.25em; }
+        .markdown-body p { margin: 0.4em 0; line-height: 1.7; }
+        .markdown-body ul, .markdown-body ol { margin: 0.4em 0; padding-left: 1.5em; }
+        .markdown-body li { margin: 0.15em 0; }
+        .markdown-body code { background: #1e293b; padding: 0.12em 0.35em; border-radius: 4px; font-size: 0.88em; color: #e2e8f0; }
+        .markdown-body pre { background: #0f172a; border-radius: 8px; padding: 0.8em; margin: 0.6em 0; overflow-x: auto; }
+        .markdown-body pre code { background: none; padding: 0; font-size: 0.83em; }
+        .markdown-body blockquote { border-left: 3px solid #475569; padding-left: 1em; margin: 0.6em 0; color: #94a3b8; }
+        .markdown-body a { color: #60a5fa; text-decoration: underline; }
+        .markdown-body table { border-collapse: collapse; margin: 0.6em 0; width: 100%; }
+        .markdown-body th, .markdown-body td { border: 1px solid #334155; padding: 0.4em 0.7em; }
+        .markdown-body th { background: #1e293b; font-weight: 600; }
+        .markdown-body hr { border: none; border-top: 1px solid #334155; margin: 0.8em 0; }
+        .markdown-body img { max-width: 100%; border-radius: 8px; }
+
+        .loading-spinner { border: 3px solid #334155; border-top: 3px solid #60a5fa; border-radius: 50%; width: 22px; height: 22px; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* 目录树 */
+        .dir-node { /* 无额外样式 */ }
+        .dir-header { padding: 5px 8px; font-size: 0.78rem; color: #94a3b8; cursor: pointer; display: flex; align-items: center; gap: 5px; user-select: none; white-space: nowrap; }
+        .dir-header:hover { background: #1e293b; color: #cbd5e1; }
+        .dir-header .arrow { transition: transform 0.15s; font-size: 0.6rem; width: 12px; text-align: center; flex-shrink: 0; }
+        .dir-header.collapsed .arrow { transform: rotate(-90deg); }
+        .dir-children { overflow: hidden; }
+        .session-item { padding: 6px 8px; cursor: pointer; border-left: 2px solid transparent; transition: all 0.12s; white-space: nowrap; }
+        .session-item:hover { background: #1e293b; }
+        .session-item.active { background: #1e3a5f; border-left-color: #60a5fa; }
+        /* 侧边栏水平滚动 */
+        #sidebar { overflow-x: auto; overflow-y: hidden; }
+        #sessions-tree { overflow-x: visible; min-width: max-content; }
+
+        /* 折叠详情块 */
+        .detail-block { border: 1px solid #334155; border-radius: 8px; margin: 6px 0; overflow: hidden; }
+        .detail-header { background: #1e293b; padding: 6px 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: #94a3b8; user-select: none; }
+        .detail-header:hover { background: #253348; }
+        .detail-body { display: none; padding: 10px 12px; background: #0f172a; font-size: 0.82rem; max-height: 300px; overflow-y: auto; }
+        .detail-block.expanded .detail-body { display: block; }
+        .detail-block.expanded .detail-header .detail-arrow { transform: rotate(90deg); }
+        .detail-arrow { transition: transform 0.15s; font-size: 0.6rem; }
+
+        /* 聊天气泡布局：用户靠右，AI靠左 */
+        .msg-row { display: flex; margin: 12px 0; }
+        .msg-row.user { justify-content: flex-end; }
+        .msg-row.assistant { justify-content: flex-start; }
+        .msg-row.tool { justify-content: flex-start; }
+        .msg-bubble { max-width: 75%; border-radius: 12px; padding: 12px 16px; }
+        .msg-bubble.user { background: #1e3a5f; border-bottom-right-radius: 4px; }
+        .msg-bubble.assistant { background: #1e293b; border: 1px solid #334155; border-bottom-left-radius: 4px; }
+        .msg-bubble.tool { background: #1a1a2e; border: 1px solid #2d2d44; border-bottom-left-radius: 4px; opacity: 0.85; }
+
+        /* 侧边栏拖动调整宽度 */
+        #resize-handle {
+            width: 4px;
+            cursor: col-resize;
+            background: transparent;
+            transition: background 0.15s;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 10;
+        }
+        #resize-handle:hover,
+        #resize-handle.active {
+            background: #3b82f6;
+        }
+        /* 拖动时防止选中文字 */
+        body.resizing { user-select: none; cursor: col-resize !important; }
+        body.resizing * { cursor: col-resize !important; }
+    </style>
+</head>
+<body class="bg-dark-950 text-dark-100 h-screen flex overflow-hidden">
+
+    <!-- 左侧边栏 -->
+    <aside id="sidebar" class="bg-dark-900 flex flex-col shrink-0" style="min-width: 200px; width: 288px; max-width: 60vw;">
+        <!-- 头部 -->
+        <div class="p-3 border-b border-dark-700">
+            <h1 class="text-base font-bold flex items-center gap-2">
+                <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+                </svg>
+                Agent Chat Hub
+            </h1>
+        </div>
+
+        <!-- 搜索 -->
+        <div class="p-2 border-b border-dark-700">
+            <div class="relative">
+                <input type="text" id="search-input" placeholder="搜索..."
+                    class="w-full bg-dark-800 border border-dark-600 rounded-lg px-3 py-1.5 pl-8 text-sm focus:outline-none focus:border-blue-500">
+                <svg class="absolute left-2.5 top-2 w-3.5 h-3.5 text-dark-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+            </div>
+        </div>
+
+        <!-- 数据源状态 + 折叠按钮 -->
+        <div class="px-3 py-2 border-b border-dark-700 flex items-center justify-between">
+            <div id="sources-bar" class="flex gap-3 text-xs">
+                <span class="text-dark-500">检测中...</span>
+            </div>
+            <button id="toggle-all-btn" onclick="toggleAllDirs()" class="text-xs text-dark-400 hover:text-dark-200 px-1.5 py-0.5 rounded hover:bg-dark-700" title="折叠/展开所有">
+                <span id="toggle-all-icon">📂</span>
+            </button>
+        </div>
+
+        <!-- 会话列表 -->
+        <div id="sessions-tree" class="flex-1 overflow-y-auto">
+            <div class="p-4 text-center text-dark-400"><div class="loading-spinner mx-auto mb-2"></div>加载中...</div>
+        </div>
+
+        <!-- 上传 -->
+        <div class="p-2 border-t border-dark-700 flex gap-1">
+            <button onclick="document.getElementById('file-upload').click()"
+                class="flex-1 bg-dark-800 hover:bg-dark-700 border border-dark-600 rounded-lg px-2 py-1.5 text-xs flex items-center justify-center gap-1 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                </svg>
+                上传文件
+            </button>
+            <button onclick="document.getElementById('folder-upload').click()"
+                class="flex-1 bg-dark-800 hover:bg-dark-700 border border-dark-600 rounded-lg px-2 py-1.5 text-xs flex items-center justify-center gap-1 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                </svg>
+                上传文件夹
+            </button>
+            <input type="file" id="file-upload" accept=".jsonl,.json,.db" class="hidden" onchange="handleFileUpload(this)">
+            <input type="file" id="folder-upload" webkitdirectory class="hidden" onchange="handleFolderUpload(this)">
+        </div>
+    </aside>
+
+    <!-- 拖动调整条 -->
+    <div id="resize-handle"></div>
+
+    <!-- 主内容区 -->
+    <main class="flex-1 flex flex-col min-w-0">
+        <!-- 顶部栏 -->
+        <header class="bg-dark-900 border-b border-dark-700 px-5 py-2.5 flex items-center justify-between">
+            <div>
+                <h2 id="session-title" class="text-sm font-semibold">选择一个会话</h2>
+                <p id="session-meta" class="text-xs text-dark-400"></p>
+            </div>
+        </header>
+
+        <!-- 消息区域 -->
+        <div id="messages-container" class="flex-1 overflow-y-auto px-6 py-4">
+            <!-- 欢迎 -->
+            <div id="welcome" class="flex flex-col items-center justify-center h-full text-dark-400">
+                <svg class="w-16 h-16 mb-3 text-dark-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                </svg>
+                <h3 class="text-lg font-semibold text-dark-300 mb-1">Agent Chat Visualizer</h3>
+                <p class="text-sm text-center">从左侧选择会话，或上传聊天记录文件</p>
+            </div>
+
+            <!-- 搜索结果 -->
+            <div id="search-results" class="hidden max-w-3xl mx-auto">
+                <h3 class="text-sm font-semibold mb-3">搜索结果</h3>
+                <div id="search-results-list" class="space-y-2"></div>
+            </div>
+
+            <!-- 消息列表 -->
+            <div id="messages-list" class="hidden max-w-3xl mx-auto"></div>
+        </div>
+    </main>
+
+    <script>
+    const state = {
+        sources: [], sessions: [], groups: [],
+        currentSession: null, searchTimeout: null,
+        collapsedDirs: new Set(),  // 记录折叠的目录ID
+        allCollapsed: false,       // 全局折叠状态
+        tree: null,                // 树形结构
+    };
+
+    const API = {
+        async getSources() { return (await fetch('/api/sources')).json(); },
+        async getSessions() { return (await fetch('/api/sessions?grouped=true')).json(); },
+        async getMessages(sid, mid) { return (await fetch(`/api/sessions/${sid}/${mid}/messages`)).json(); },
+        async search(q) { return (await fetch(`/api/search?q=${encodeURIComponent(q)}`)).json(); },
+        async upload(file) {
+            const fd = new FormData(); fd.append('file', file);
+            return (await fetch('/api/upload', { method: 'POST', body: fd })).json();
+        }
+    };
+
+    // ============ 构建目录树 ============
+    function buildTree(sessions) {
+        const root = { name: '', path: '', children: {}, sessions: [], isDisk: false };
+        const noPathSessions = []; // 没有路径的会话
+
+        for (const s of sessions) {
+            let rawPath = s.metadata?.project_path || s.metadata?.file || '';
+            if (!rawPath) {
+                noPathSessions.push(s);
+                continue;
+            }
+
+            // 标准化路径
+            rawPath = rawPath.replace(/\//g, '\\');
+            const parts = rawPath.split('\\').filter(Boolean);
+
+            if (parts.length === 0) {
+                noPathSessions.push(s);
+                continue;
+            }
+
+            // 解析盘符（如 D:）
+            let diskName = parts[0];
+            let startIdx = 1;
+
+            // 处理 D:\ 这种格式
+            if (diskName.endsWith(':') && parts.length > 1) {
+                diskName = parts[0]; // D:
+                startIdx = 1;
+            } else if (diskName.length === 1 && /^[A-Za-z]$/.test(diskName)) {
+                // 单独的字母可能是盘符
+                diskName = parts[0] + ':';
+                startIdx = 1;
+            }
+
+            // 如果不是有效盘符，放到无路径组
+            if (!/^[A-Za-z]:$/.test(diskName)) {
+                noPathSessions.push(s);
+                continue;
+            }
+
+            // 查找或创建盘符节点
+            if (!root.children[diskName]) {
+                root.children[diskName] = {
+                    name: diskName,
+                    path: diskName,
+                    children: {},
+                    sessions: [],
+                    isDisk: true,
+                };
+            }
+            let current = root.children[diskName];
+
+            // 遍历路径的每一级
+            for (let i = startIdx; i < parts.length; i++) {
+                const part = parts[i];
+                if (!part || part === '.' || part === '..') continue;
+
+                if (!current.children[part]) {
+                    current.children[part] = {
+                        name: part,
+                        path: current.path + '\\' + part,
+                        children: {},
+                        sessions: [],
+                        isDisk: false,
+                    };
+                }
+                current = current.children[part];
+            }
+
+            // 将会话添加到最终节点
+            current.sessions.push(s);
+        }
+
+        // 将没有路径的会话放到 "其他" 分组
+        if (noPathSessions.length > 0) {
+            root.children['其他'] = {
+                name: '其他',
+                path: '其他',
+                children: {},
+                sessions: noPathSessions,
+                isDisk: false,
+            };
+        }
+
+        // 排序：盘符按字母，子目录按名称，会话按时间
+        function sortTree(node) {
+            // 对子节点排序
+            const sortedChildren = {};
+            const keys = Object.keys(node.children).sort((a, b) => {
+                // 盘符排前面，"其他"排最后
+                const aIsDisk = node.children[a].isDisk;
+                const bIsDisk = node.children[b].isDisk;
+                const aIsOther = a === '其他';
+                const bIsOther = b === '其他';
+                if (aIsOther) return 1;
+                if (bIsOther) return -1;
+                if (aIsDisk && !bIsDisk) return -1;
+                if (!aIsDisk && bIsDisk) return 1;
+                return a.localeCompare(b);
+            });
+            for (const key of keys) {
+                sortedChildren[key] = node.children[key];
+                sortTree(node.children[key]);
+            }
+            node.children = sortedChildren;
+
+            // 会话按时间排序
+            node.sessions.sort((a, b) => {
+                const ta = a.created_at || '';
+                const tb = b.created_at || '';
+                return tb.localeCompare(ta);
+            });
+        }
+
+        sortTree(root);
+        return root;
+    }
+
+    // ============ 初始化 ============
+    async function init() {
+        const [srcData, sesData] = await Promise.all([API.getSources(), API.getSessions()]);
+        state.sources = srcData.sources;
+        state.groups = sesData.groups || [];
+        state.sessions = [];
+        state.groups.forEach(g => state.sessions.push(...g.sessions));
+
+        // 构建树形结构
+        state.tree = buildTree(state.sessions);
+
+        renderSources();
+        renderTree();
+    }
+
+    // ============ 渲染数据源状态 ============
+    function renderSources() {
+        const colors = { 'claude-code': 'bg-orange-500', 'opencode': 'bg-green-500', 'codex-cli': 'bg-blue-500' };
+        // 只显示可用的数据源
+        const available = state.sources.filter(s => s.available);
+        document.getElementById('sources-bar').innerHTML = available.map(s => {
+            const color = colors[s.id] || 'bg-purple-500';
+            const displayName = s.name.length > 12 ? s.name.slice(0, 12) + '...' : s.name;
+            return `<span class="flex items-center gap-1" title="${s.name}">
+                <span class="w-1.5 h-1.5 rounded-full ${color}"></span>
+                <span class="text-dark-300">${esc(displayName)}</span>
+                <span class="text-dark-500">${s.session_count}</span>
+            </span>`;
+        }).join('');
+    }
+
+    // ============ 渲染目录树（递归）============
+    function renderTree() {
+        const container = document.getElementById('sessions-tree');
+        if (!state.tree || (state.sessions.length === 0)) {
+            container.innerHTML = '<div class="p-4 text-center text-dark-400 text-sm">未检测到会话</div>';
+            return;
+        }
+
+        let html = '';
+
+        // 渲染根目录下的无路径会话
+        if (state.tree.sessions.length > 0) {
+            html += renderSessionsList(state.tree.sessions, 0);
+        }
+
+        // 渲染各盘符
+        for (const [diskName, diskNode] of Object.entries(state.tree.children)) {
+            html += renderTreeNode(diskNode, 0);
+        }
+
+        container.innerHTML = html;
+    }
+
+    function renderTreeNode(node, depth) {
+        const dirId = 'dir-' + hashCode(node.path || node.name);
+        const isCollapsed = state.collapsedDirs.has(dirId);
+
+        // 计算此节点下的总会话数（包括子目录）
+        const totalSessions = countSessions(node);
+        if (totalSessions === 0) return '';
+
+        // 图标
+        const icon = node.isDisk ? '💾' : '📁';
+
+        let html = `<div class="dir-node">
+            <div class="dir-header ${isCollapsed ? 'collapsed' : ''}" style="padding-left: ${depth * 16 + 8}px"
+                 onclick="toggleDir('${dirId}', this)">
+                <span class="arrow">▼</span>
+                <span>${icon}</span>
+                <span class="flex-1 whitespace-nowrap">${esc(node.name)}</span>
+                <span class="text-dark-500 text-xs shrink-0">${totalSessions}</span>
+            </div>
+            <div id="${dirId}" class="dir-children" style="max-height: ${isCollapsed ? '0' : 'none'}; overflow: hidden;">`;
+
+        // 子目录
+        for (const [childName, childNode] of Object.entries(node.children)) {
+            html += renderTreeNode(childNode, depth + 1);
+        }
+
+        // 当前目录下的会话
+        if (node.sessions.length > 0) {
+            html += renderSessionsList(node.sessions, depth + 1);
+        }
+
+        html += '</div></div>';
+        return html;
+    }
+
+    function renderSessionsList(sessions, depth) {
+        let html = '';
+        for (const s of sessions) {
+            const isActive = state.currentSession?.id === s.id;
+            const timeStr = formatShortTime(s.created_at);
+            const srcIcon = { 'claude-code': '🟠', 'opencode': '🟢', 'codex-cli': '🔵' }[s.source] || '⚪';
+            html += `<div class="session-item ${isActive ? 'active' : ''}"
+                style="padding-left: ${depth * 16 + 24}px"
+                onclick="selectSession('${s.source}','${s.id}')" title="${esc(s.title)}">
+                <div class="flex items-center gap-1.5">
+                    <span class="text-xs shrink-0">${srcIcon}</span>
+                    <span class="text-dark-200 text-sm whitespace-nowrap">${esc(s.title)}</span>
+                </div>
+                <div class="text-[0.65rem] text-dark-500 mt-0.5 whitespace-nowrap" style="padding-left: 18px">${timeStr}</div>
+            </div>`;
+        }
+        return html;
+    }
+
+    function countSessions(node) {
+        let count = node.sessions.length;
+        for (const child of Object.values(node.children)) {
+            count += countSessions(child);
+        }
+        return count;
+    }
+
+    function toggleDir(dirId, el) {
+        const children = document.getElementById(dirId);
+        if (!children) return;
+
+        if (state.collapsedDirs.has(dirId)) {
+            state.collapsedDirs.delete(dirId);
+            el.classList.remove('collapsed');
+            children.style.maxHeight = 'none';
+        } else {
+            state.collapsedDirs.add(dirId);
+            el.classList.add('collapsed');
+            children.style.maxHeight = '0';
+        }
+    }
+
+    // ============ 一键折叠/展开所有 ============
+    function toggleAllDirs() {
+        state.allCollapsed = !state.allCollapsed;
+        const icon = document.getElementById('toggle-all-icon');
+
+        // 收集所有目录ID
+        const allDirIds = [];
+        function collectDirIds(node) {
+            const dirId = 'dir-' + hashCode(node.path || node.name);
+            allDirIds.push(dirId);
+            for (const child of Object.values(node.children)) {
+                collectDirIds(child);
+            }
+        }
+        if (state.tree) {
+            for (const child of Object.values(state.tree.children)) {
+                collectDirIds(child);
+            }
+        }
+
+        if (state.allCollapsed) {
+            allDirIds.forEach(id => state.collapsedDirs.add(id));
+            icon.textContent = '📁';
+        } else {
+            state.collapsedDirs.clear();
+            icon.textContent = '📂';
+        }
+
+        // 更新 DOM
+        allDirIds.forEach(dirId => {
+            const el = document.getElementById(dirId);
+            const header = el?.previousElementSibling;
+            if (!el || !header) return;
+
+            if (state.allCollapsed) {
+                header.classList.add('collapsed');
+                el.style.maxHeight = '0';
+            } else {
+                header.classList.remove('collapsed');
+                el.style.maxHeight = 'none';
+            }
+        });
+    }
+
+    function shortenPath(p) {
+        if (!p) return '未知';
+        // 只取最后两级目录
+        const parts = p.replace(/\\/g, '/').split('/').filter(Boolean);
+        if (parts.length <= 2) return p;
+        return '.../' + parts.slice(-2).join('/');
+    }
+
+    function hashCode(s) {
+        let h = 0;
+        for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+        return Math.abs(h).toString(36);
+    }
+
+    // ============ 选择会话 ============
+    async function selectSession(sourceId, sessionId) {
+        state.currentSession = state.sessions.find(s => s.id === sessionId);
+        renderTree();
+        document.getElementById('session-title').textContent = state.currentSession?.title || '会话';
+        document.getElementById('session-meta').textContent = `${sourceId} · ${state.currentSession?.message_count || 0} 条消息`;
+
+        const container = document.getElementById('messages-list');
+        const welcome = document.getElementById('welcome');
+        const searchResults = document.getElementById('search-results');
+        welcome.classList.add('hidden');
+        searchResults.classList.add('hidden');
+        container.classList.remove('hidden');
+        container.innerHTML = '<div class="flex justify-center py-8"><div class="loading-spinner"></div></div>';
+
+        try {
+            const data = await API.getMessages(sourceId, sessionId);
+            renderMessages(data.messages);
+        } catch (e) {
+            container.innerHTML = '<div class="text-center text-red-400 py-8">加载失败</div>';
+        }
+    }
+
+    // ============ 渲染消息（用户靠右，AI靠左）============
+    function renderMessages(messages) {
+        const container = document.getElementById('messages-list');
+        if (!messages.length) { container.innerHTML = '<div class="text-center text-dark-400 py-8">无消息</div>'; return; }
+
+        let html = '';
+        for (const msg of messages) {
+            const role = msg.role; // 'user' | 'assistant' | 'tool'
+
+            // 工具消息默认折叠，不单独展示气泡
+            if (role === 'tool') {
+                // 工具结果作为折叠块，归属到上一条助手消息
+                continue;
+            }
+
+            // 分离正文和附属内容
+            const mainBlocks = [];
+            const detailBlocks = [];
+            for (const block of msg.content) {
+                if (block.type === 'text') {
+                    mainBlocks.push(block);
+                } else {
+                    detailBlocks.push(block);
+                }
+            }
+
+            // 没有正文内容的消息跳过（纯 tool_use 的 assistant 消息）
+            if (mainBlocks.length === 0 && detailBlocks.length > 0) {
+                // 把 tool_use 也跳过，只在有正文回答时才展示
+                continue;
+            }
+
+            const isUser = role === 'user';
+            const rowClass = isUser ? 'user' : 'assistant';
+            const bubbleClass = isUser ? 'user' : 'assistant';
+            const roleIcon = isUser ? '👤' : '🤖';
+            const roleLabel = isUser ? '用户' : '助手';
+            const timeStr = msg.timestamp ? formatShortTime(msg.timestamp) : '';
+            const modelStr = msg.model ? ` · ${msg.model}` : '';
+
+            html += `<div class="msg-row ${rowClass}">`;
+            html += `<div class="msg-bubble ${bubbleClass}">`;
+
+            // 角色标签 + 时间（用户标签在右，AI标签在左）
+            html += `<div class="flex items-center gap-1.5 mb-1.5 ${isUser ? 'justify-end' : ''}">
+                <span class="text-xs">${roleIcon}</span>
+                <span class="text-[0.7rem] ${isUser ? 'text-blue-300' : 'text-dark-400'}">${roleLabel}</span>
+                <span class="text-[0.65rem] text-dark-500">${timeStr}${modelStr}</span>
+            </div>`;
+
+            // 主要内容（正文）
+            for (const block of mainBlocks) {
+                html += `<div class="markdown-body text-sm">${renderMd(block.content)}</div>`;
+            }
+
+            // 附属内容（折叠）
+            if (detailBlocks.length > 0) {
+                html += renderDetailBlocks(detailBlocks);
+            }
+
+            html += '</div></div>';
+        }
+
+        container.innerHTML = html;
+        container.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
+        document.getElementById('messages-container').scrollTop = 0;
+    }
+
+    // ============ 渲染折叠块 ============
+    function renderDetailBlocks(blocks) {
+        let html = '';
+        for (const block of blocks) {
+            const id = 'det-' + Math.random().toString(36).slice(2, 8);
+            if (block.type === 'thinking') {
+                html += `<div class="detail-block" id="${id}">
+                    <div class="detail-header" onclick="toggleDetail('${id}')">
+                        <span class="detail-arrow">▶</span>
+                        <span>💭 思考过程</span>
+                        <span class="text-dark-600 text-[0.7rem]">${block.content.length}字</span>
+                    </div>
+                    <div class="detail-body"><div class="markdown-body">${renderMd(block.content)}</div></div>
+                </div>`;
+            } else if (block.type === 'tool_use') {
+                const toolName = block.metadata?.tool_name || '工具';
+                html += `<div class="detail-block" id="${id}">
+                    <div class="detail-header" onclick="toggleDetail('${id}')">
+                        <span class="detail-arrow">▶</span>
+                        <span>🔧 ${esc(toolName)}</span>
+                        <span class="text-dark-600 text-[0.7rem]">工具调用</span>
+                    </div>
+                    <div class="detail-body"><pre class="text-xs"><code class="language-json">${esc(block.content)}</code></pre></div>
+                </div>`;
+            } else if (block.type === 'tool_result') {
+                const isErr = block.metadata?.is_error;
+                html += `<div class="detail-block" id="${id}">
+                    <div class="detail-header" onclick="toggleDetail('${id}')">
+                        <span class="detail-arrow">▶</span>
+                        <span>${isErr ? '❌ 错误结果' : '✅ 工具结果'}</span>
+                    </div>
+                    <div class="detail-body"><pre class="text-xs"><code>${esc(block.content)}</code></pre></div>
+                </div>`;
+            }
+        }
+        return html;
+    }
+
+    function toggleDetail(id) {
+        document.getElementById(id)?.classList.toggle('expanded');
+    }
+
+    // ============ 搜索 ============
+    document.getElementById('search-input').addEventListener('input', function(e) {
+        clearTimeout(state.searchTimeout);
+        const q = e.target.value.trim();
+        if (!q) {
+            document.getElementById('search-results').classList.add('hidden');
+            if (state.currentSession) document.getElementById('messages-list').classList.remove('hidden');
+            else document.getElementById('welcome').classList.remove('hidden');
+            return;
+        }
+        state.searchTimeout = setTimeout(() => doSearch(q), 300);
+    });
+
+    async function doSearch(q) {
+        const list = document.getElementById('search-results-list');
+        document.getElementById('welcome').classList.add('hidden');
+        document.getElementById('messages-list').classList.add('hidden');
+        document.getElementById('search-results').classList.remove('hidden');
+        list.innerHTML = '<div class="flex justify-center py-4"><div class="loading-spinner"></div></div>';
+
+        try {
+            const data = await API.search(q);
+            if (!data.results.length) { list.innerHTML = '<div class="text-center text-dark-400 py-4 text-sm">无结果</div>'; return; }
+            list.innerHTML = data.results.map(r => `
+                <div class="bg-dark-800 rounded-lg p-3 cursor-pointer hover:bg-dark-700 text-sm"
+                     onclick="selectSession('${r.session_id}','${r.session_id}')">
+                    <div class="text-dark-300 font-medium mb-1">${esc(r.session_title)}</div>
+                    <div class="text-dark-400 text-xs">${highlightMatch(r.matched_text, q)}</div>
+                </div>`).join('');
+        } catch { list.innerHTML = '<div class="text-center text-red-400 py-4">搜索失败</div>'; }
+    }
+
+    // ============ 文件上传 ============
+    async function handleFileUpload(input) {
+        const file = input.files[0]; if (!file) return;
+        try {
+            const r = await API.upload(file);
+            if (r.success) {
+                await init();
+                const typeNames = { 'claude-code': 'Claude Code', 'opencode': 'OpenCode', 'codex-cli': 'Codex CLI', 'unknown': '未知格式' };
+                alert(`上传成功！\n类型: ${typeNames[r.detected_type] || r.detected_type}\n请在左侧会话列表中查看。`);
+            } else {
+                alert('上传失败: ' + (r.detail || '未知错误'));
+            }
+        } catch (e) { alert('上传失败: ' + e.message); }
+        input.value = '';
+    }
+
+    async function handleFolderUpload(input) {
+        const files = input.files;
+        if (!files || files.length === 0) return;
+
+        // 过滤出可能的聊天记录文件
+        const validExts = ['.jsonl', '.json', '.db'];
+        const validFiles = Array.from(files).filter(f => {
+            const ext = f.name.toLowerCase().substring(f.name.lastIndexOf('.'));
+            return validExts.includes(ext);
+        });
+
+        if (validFiles.length === 0) {
+            alert('文件夹中未找到聊天记录文件（.jsonl, .json, .db）');
+            input.value = '';
+            return;
+        }
+
+        // 显示进度
+        const total = validFiles.length;
+        let processed = 0;
+        let success = 0;
+
+        for (const file of validFiles) {
+            try {
+                const r = await API.upload(file);
+                if (r.success && r.detected_type !== 'unknown') {
+                    success++;
+                }
+                processed++;
+            } catch (e) {
+                // 跳过失败的文件
+                processed++;
+            }
+        }
+
+        await init();
+
+        if (success > 0) {
+            alert(`文件夹扫描完成！\n找到 ${success} 个有效会话文件\n共扫描 ${total} 个文件`);
+        } else {
+            alert(`文件夹扫描完成，未找到有效的会话记录\n共扫描 ${total} 个文件`);
+        }
+
+        input.value = '';
+    }
+
+    // ============ 工具函数 ============
+    function esc(t) { if (!t) return ''; const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+
+    function renderMd(t) {
+        if (!t) return '';
+        try {
+            marked.setOptions({
+                highlight: (c, l) => { try { return l && hljs.getLanguage(l) ? hljs.highlight(c,{language:l}).value : hljs.highlightAuto(c).value; } catch { return c; } },
+                breaks: true, gfm: true,
+            });
+            return marked.parse(t);
+        } catch { return esc(t); }
+    }
+
+    function formatShortTime(ts) {
+        if (!ts) return '';
+        try {
+            const d = new Date(ts), now = new Date(), diff = now - d;
+            if (diff < 60000) return '刚刚';
+            if (diff < 3600000) return Math.floor(diff/60000) + '分钟前';
+            if (diff < 86400000) return Math.floor(diff/3600000) + '小时前';
+            return d.toLocaleDateString('zh-CN', { month:'numeric', day:'numeric' }) + ' ' +
+                   d.toLocaleTimeString('zh-CN', { hour:'2-digit', minute:'2-digit' });
+        } catch { return ''; }
+    }
+
+    function highlightMatch(text, q) {
+        if (!text || !q) return esc(text);
+        const r = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
+        return esc(text).replace(r, '<mark class="bg-yellow-600/30 text-yellow-200 rounded px-0.5">$1</mark>');
+    }
+
+    // ============ 侧边栏拖动调整宽度 ============
+    (function initResize() {
+        const sidebar = document.getElementById('sidebar');
+        const handle = document.getElementById('resize-handle');
+        let isResizing = false;
+        let startX = 0;
+        let startWidth = 0;
+
+        handle.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            startX = e.clientX;
+            startWidth = sidebar.offsetWidth;
+            handle.classList.add('active');
+            document.body.classList.add('resizing');
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            const dx = e.clientX - startX;
+            const newWidth = Math.min(Math.max(startWidth + dx, 200), window.innerWidth * 0.6);
+            sidebar.style.width = newWidth + 'px';
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (!isResizing) return;
+            isResizing = false;
+            handle.classList.remove('active');
+            document.body.classList.remove('resizing');
+        });
+    })();
+
+    init();
+    </script>
+</body>
+</html>
