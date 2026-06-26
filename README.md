@@ -135,16 +135,16 @@ pkill -f "python -m app.main"
 
 ## 📂 支持的 Agent 工具
 
-| 工具 | 数据位置 | 自动检测 |
-|------|----------|----------|
-| 🟠 **Claude Code** | `~/.claude/projects/` | ✅ |
-| 🔵 **Codex CLI** | `~/.codex/sessions/` + `history.jsonl` | ✅ |
-| 🟢 **OpenCode** | `~/.local/share/opencode/` | ✅ |
-| 🟢 **deveco** | `~/.local/share/deveco/` | ✅ |
-| 🟢 **codeagent** | `~/.local/share/codeagent/` | ✅ |
-| 🟢 **其他衍生版** | `~/.local/share/<名称>/` | ✅ |
+| 工具 | 数据位置 | 颜色 | 自动检测 |
+|------|----------|------|----------|
+| 🟠 **Claude Code** | `~/.claude/projects/` | 橙色 | ✅ |
+| 🔵 **Codex CLI** | `~/.codex/sessions/` + `history.jsonl` | 蓝色 | ✅ |
+| 🟢 **OpenCode** | `~/.local/share/opencode/` | 绿色 | ✅ |
+| 🟣 **deveco** | `~/.local/share/deveco/` | 紫色 | ✅ |
+| 💗 **codeagent** | `~/.local/share/codeagent/` | 粉色 | ✅ |
+| 🩵 **其他衍生版** | `~/.local/share/<名称>/` | 自动分配 | ✅ |
 
-> 💡 所有基于 OpenCode 的衍生工具都会被自动识别，无需额外配置。
+> 💡 所有基于 OpenCode 的衍生工具都会被自动识别，无需额外配置。每个 Agent 有独立的颜色标识，便于区分。
 
 ## 🛠️ 功能特性
 
@@ -282,6 +282,12 @@ The browser will automatically open at `http://localhost:8765`.
 ### License
 
 MIT License
+
+---
+
+## 📋 更新日志
+
+详见 [CHANGELOG.md](CHANGELOG.md)
 
 ---
 

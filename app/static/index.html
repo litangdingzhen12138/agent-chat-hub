@@ -340,20 +340,70 @@
         // 构建树形结构
         state.tree = buildTree(state.sessions);
 
+        // 初始化颜色分配
+        initAgentColors();
+
         renderSources();
         renderTree();
     }
 
     // ============ 渲染数据源状态 ============
+    // 颜色配置
+    const FIXED_COLORS = {
+        'claude-code': { bg: 'bg-orange-500', icon: '🟠' },
+        'codex-cli': { bg: 'bg-blue-500', icon: '🔵' },
+    };
+    // 颜色池（用于其他 agent，循环使用）
+    const COLOR_POOL = [
+        { bg: 'bg-green-500', icon: '🟢' },   // 绿色（opencode 默认）
+        { bg: 'bg-purple-500', icon: '🟣' },   // 紫色
+        { bg: 'bg-pink-500', icon: '💗' },     // 粉色
+        { bg: 'bg-cyan-500', icon: '🩵' },     // 青色
+        { bg: 'bg-amber-500', icon: '🟡' },    // 琥珀
+        { bg: 'bg-teal-500', icon: '💚' },     // 蓝绿
+        { bg: 'bg-rose-500', icon: '🌹' },     // 玫瑰
+        { bg: 'bg-lime-500', icon: '🍋' },     // 酸橙
+    ];
+
+    // 获取 agent 颜色（带缓存）
+    const _agentColorCache = {};
+    let _colorPoolIndex = 0;
+
+    function getAgentColor(sourceId) {
+        if (_agentColorCache[sourceId]) return _agentColorCache[sourceId];
+
+        // 固定颜色
+        if (FIXED_COLORS[sourceId]) {
+            _agentColorCache[sourceId] = FIXED_COLORS[sourceId];
+            return _agentColorCache[sourceId];
+        }
+
+        // 从颜色池中取（循环）
+        const color = COLOR_POOL[_colorPoolIndex % COLOR_POOL.length];
+        _colorPoolIndex++;
+        _agentColorCache[sourceId] = color;
+        return color;
+    }
+
+    // 初始化时为所有 agent 分配颜色
+    function initAgentColors() {
+        _colorPoolIndex = 0;
+        // 清空缓存
+        Object.keys(_agentColorCache).forEach(k => delete _agentColorCache[k]);
+        // 为每个 agent 分配颜色
+        state.sources.forEach(s => {
+            getAgentColor(s.id);
+        });
+    }
+
     function renderSources() {
-        const colors = { 'claude-code': 'bg-orange-500', 'opencode': 'bg-green-500', 'codex-cli': 'bg-blue-500' };
         // 只显示可用的数据源
         const available = state.sources.filter(s => s.available);
         document.getElementById('sources-bar').innerHTML = available.map(s => {
-            const color = colors[s.id] || 'bg-purple-500';
+            const color = getAgentColor(s.id);
             const displayName = s.name.length > 12 ? s.name.slice(0, 12) + '...' : s.name;
             return `<span class="flex items-center gap-1" title="${s.name}">
-                <span class="w-1.5 h-1.5 rounded-full ${color}"></span>
+                <span class="w-1.5 h-1.5 rounded-full ${color.bg}"></span>
                 <span class="text-dark-300">${esc(displayName)}</span>
                 <span class="text-dark-500">${s.session_count}</span>
             </span>`;
@@ -423,7 +473,9 @@
         for (const s of sessions) {
             const isActive = state.currentSession?.id === s.id;
             const timeStr = formatShortTime(s.created_at);
-            const srcIcon = { 'claude-code': '🟠', 'opencode': '🟢', 'codex-cli': '🔵' }[s.source] || '⚪';
+            // 根据 source 判断图标
+            const srcColor = getAgentColor(s.source);
+            const srcIcon = srcColor.icon;
             html += `<div class="session-item ${isActive ? 'active' : ''}"
                 style="padding-left: ${depth * 16 + 24}px"
                 onclick="selectSession('${s.source}','${s.id}')" title="${esc(s.title)}">

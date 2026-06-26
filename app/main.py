@@ -68,10 +68,13 @@ def _get_parser(source_id: str):
         return None
 
     parser = None
+    # Claude Code
     if source_id == SourceType.CLAUDE_CODE:
         parser = ClaudeCodeParser(source.path)
-    elif source_id == SourceType.OPENCODE:
-        parser = OpenCodeParser(source.path)
+    # OpenCode 类（包括 opencode:deveco, opencode:codeagent 等）
+    elif source_id.startswith("opencode:"):
+        parser = OpenCodeParser(source.path, source_id=source_id)
+    # Codex CLI
     elif source_id == SourceType.CODEX_CLI:
         parser = CodexCliParser(source.path)
 
@@ -96,7 +99,11 @@ async def list_sessions(source: Optional[str] = None, grouped: bool = False):
     """列出所有会话，可按数据源过滤"""
     all_sessions = []
 
-    sources_to_check = [source] if source else [s.value for s in SourceType]
+    if source:
+        sources_to_check = [source]
+    else:
+        # 获取所有可用的数据源 ID
+        sources_to_check = [s.id for s in detect_all() if s.available]
 
     for source_id in sources_to_check:
         parser = _get_parser(source_id)

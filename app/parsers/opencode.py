@@ -29,8 +29,9 @@ class OpenCodeParser(BaseParser):
     - part.data 是 JSON，包含 type, text 等信息
     """
 
-    def __init__(self, db_path: str | Path):
+    def __init__(self, db_path: str | Path, source_id: str = "opencode"):
         self.db_path = Path(db_path)
+        self.source_id = source_id
         self._sessions_cache: list[Session] | None = None
 
     def _get_connection(self) -> sqlite3.Connection:
@@ -42,8 +43,8 @@ class OpenCodeParser(BaseParser):
     def get_source(self) -> Source:
         sessions = self.get_sessions()
         return Source(
-            id=SourceType.OPENCODE,
-            name="OpenCode",
+            id=self.source_id,
+            name=self.source_id.split(":")[-1] if ":" in self.source_id else "OpenCode",
             available=len(sessions) > 0,
             path=str(self.db_path),
             session_count=len(sessions),
@@ -206,7 +207,7 @@ class OpenCodeParser(BaseParser):
 
             return Session(
                 id=row["id"],
-                source=SourceType.OPENCODE,
+                source=self.source_id,
                 title=row["title"] or "Untitled",
                 message_count=msg_count,
                 created_at=created_at,

@@ -55,7 +55,7 @@ class Message(BaseModel):
 class Session(BaseModel):
     """聊天会话"""
     id: str
-    source: SourceType
+    source: str  # 支持动态 ID，如 "claude-code", "opencode:deveco"
     title: str = ""
     message_count: int = 0
     created_at: Optional[datetime] = None
@@ -65,7 +65,7 @@ class Session(BaseModel):
 
 class Source(BaseModel):
     """数据源"""
-    id: SourceType
+    id: str  # 支持动态 ID，如 "claude-code", "opencode:deveco"
     name: str
     available: bool = False
     path: str = ""

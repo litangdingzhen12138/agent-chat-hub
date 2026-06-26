@@ -19,7 +19,6 @@ def detect_claude_code() -> Source:
     claude_dir = home / ".claude" / "projects"
 
     if claude_dir.exists():
-        # 统计会话数量
         session_count = 0
         for project_dir in claude_dir.iterdir():
             if project_dir.is_dir():
@@ -43,8 +42,9 @@ def detect_claude_code() -> Source:
     )
 
 
-def detect_opencode() -> Source:
-    """检测 OpenCode 数据（包括所有类 OpenCode 的 agent）"""
+def detect_opencode_agents() -> list[Source]:
+    """检测所有 OpenCode 类 agent（可能有多个）"""
+    agents = []
     home = get_home_dir()
 
     # 扫描 ~/.local/share/ 下所有子目录
@@ -63,26 +63,27 @@ def detect_opencode() -> Source:
                 if db_file.exists():
                     session_count = _count_opencode_sessions(db_file)
                     if session_count > 0:
-                        return Source(
-                            id=SourceType.OPENCODE,
+                        agents.append(Source(
+                            id=f"opencode:{agent_name}",
                             name=agent_name,
                             available=True,
                             path=str(db_file),
                             session_count=session_count,
-                        )
+                        ))
 
             # 其他目录：扫描所有 .db 文件
             else:
                 for db_file in subdir.glob("*.db"):
                     session_count = _count_opencode_sessions(db_file)
                     if session_count > 0:
-                        return Source(
-                            id=SourceType.OPENCODE,
+                        agents.append(Source(
+                            id=f"opencode:{agent_name}",
                             name=agent_name,
                             available=True,
                             path=str(db_file),
                             session_count=session_count,
-                        )
+                        ))
+                        break  # 找到一个有效的 db 就停止
 
     # 检查 XDG_CONFIG_HOME
     config_dir = Path(os.environ.get("XDG_CONFIG_HOME", home / ".config"))
@@ -90,51 +91,61 @@ def detect_opencode() -> Source:
         for subdir in sorted(config_dir.iterdir()):
             if not subdir.is_dir():
                 continue
+            # 跳过已检测过的
+            if any(a.name == subdir.name for a in agents):
+                continue
             for db_file in subdir.glob("*.db"):
                 session_count = _count_opencode_sessions(db_file)
                 if session_count > 0:
-                    return Source(
-                        id=SourceType.OPENCODE,
+                    agents.append(Source(
+                        id=f"opencode:{subdir.name}",
                         name=subdir.name,
                         available=True,
                         path=str(db_file),
                         session_count=session_count,
-                    )
+                    ))
+                    break
 
     # 检查 ~/.<name>/ 格式
     for pattern in ["opencode", "codeagent", "deveco"]:
+        if any(a.name == pattern for a in agents):
+            continue
         db_file = home / f".{pattern}" / "opencode.db"
         if db_file.exists():
             session_count = _count_opencode_sessions(db_file)
             if session_count > 0:
-                return Source(
-                    id=SourceType.OPENCODE,
+                agents.append(Source(
+                    id=f"opencode:{pattern}",
                     name=pattern,
                     available=True,
                     path=str(db_file),
                     session_count=session_count,
-                )
+                ))
 
     # 检查当前目录
     cwd = Path.cwd()
     local_db = cwd / ".opencode" / "opencode.db"
-    if local_db.exists():
+    if local_db.exists() and not any(a.name == "opencode" for a in agents):
         session_count = _count_opencode_sessions(local_db)
         if session_count > 0:
-            return Source(
-                id=SourceType.OPENCODE,
+            agents.append(Source(
+                id="opencode:opencode",
                 name="opencode",
                 available=True,
                 path=str(local_db),
                 session_count=session_count,
-            )
+            ))
 
-    return Source(
-        id=SourceType.OPENCODE,
-        name="opencode",
-        available=False,
-        path=str(home / ".local" / "share" / "opencode" / "opencode.db"),
-    )
+    # 如果没有找到任何 agent，返回一个默认的不可用 source
+    if not agents:
+        agents.append(Source(
+            id="opencode:opencode",
+            name="opencode",
+            available=False,
+            path=str(home / ".local" / "share" / "opencode" / "opencode.db"),
+        ))
+
+    return agents
 
 
 def _count_opencode_sessions(db_path: Path) -> int:
@@ -142,7 +153,6 @@ def _count_opencode_sessions(db_path: Path) -> int:
     try:
         import sqlite3
         conn = sqlite3.connect(str(db_path))
-        # OpenCode 实际使用 session 表（不是 sessions）
         cursor = conn.execute(
             "SELECT COUNT(*) FROM session WHERE parent_id IS NULL"
         )
@@ -202,27 +212,24 @@ def detect_codex_cli() -> Source:
 
 def detect_all() -> list[Source]:
     """检测所有支持的数据源"""
-    return [
-        detect_claude_code(),
-        detect_opencode(),
-        detect_codex_cli(),
-    ]
+    sources = []
+
+    # Claude Code
+    sources.append(detect_claude_code())
+
+    # OpenCode 类 agents（可能有多个）
+    sources.extend(detect_opencode_agents())
+
+    # Codex CLI
+    sources.append(detect_codex_cli())
+
+    return sources
 
 
 def get_source_by_id(source_id: str) -> Source | None:
     """根据 ID 获取数据源"""
-    detectors = {
-        SourceType.CLAUDE_CODE: detect_claude_code,
-        SourceType.OPENCODE: detect_opencode,
-        SourceType.CODEX_CLI: detect_codex_cli,
-    }
-
-    try:
-        source_type = SourceType(source_id)
-    except ValueError:
-        return None
-
-    detector = detectors.get(source_type)
-    if detector:
-        return detector()
+    all_sources = detect_all()
+    for source in all_sources:
+        if source.id == source_id:
+            return source
     return None
