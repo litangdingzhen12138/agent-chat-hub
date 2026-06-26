@@ -39,7 +39,7 @@
 自动扫描本地已安装的 Agent 工具，无需手动指定路径：
 - ✅ Claude Code
 - ✅ Codex CLI  
-- ✅ OpenCode 及其衍生版本（deveco、codeagent 等）
+- ✅ OpenCode 及其衍生版本
 
 ### 🎨 美观界面，舒适体验
 - 深色主题，护眼舒适
@@ -135,14 +135,16 @@ pkill -f "python -m app.main"
 
 ## 📂 支持的 Agent 工具
 
+
 | 工具 | 数据位置 | 颜色 | 自动检测 |
 |------|----------|------|----------|
 | 🟠 **Claude Code** | `~/.claude/projects/` | 橙色 | ✅ |
 | 🔵 **Codex CLI** | `~/.codex/sessions/` + `history.jsonl` | 蓝色 | ✅ |
 | 🟢 **OpenCode** | `~/.local/share/opencode/` | 绿色 | ✅ |
-| 🟣 **deveco** | `~/.local/share/deveco/` | 紫色 | ✅ |
-| 💗 **codeagent** | `~/.local/share/codeagent/` | 粉色 | ✅ |
+| 🟣 **agent1** | `~/.local/share/deveco/` | 紫色 | ✅ |
+| 💗 **agent2** | `~/.local/share/codeagent/` | 粉色 | ✅ |
 | 🩵 **其他衍生版** | `~/.local/share/<名称>/` | 自动分配 | ✅ |
+
 
 > 💡 所有基于 OpenCode 的衍生工具都会被自动识别，无需额外配置。每个 Agent 有独立的颜色标识，便于区分。
 
@@ -197,7 +199,6 @@ agent-chat-hub/
 │   │   ├── base.py           # 解析器基类
 │   │   ├── claude_code.py    # Claude Code 解析器
 │   │   ├── opencode.py       # OpenCode 解析器
-│   │   └── codex_cli.py      # Codex CLI 解析器
 │   └── static/
 │       └── index.html        # 前端页面
 ├── requirements.txt
@@ -270,8 +271,6 @@ The browser will automatically open at `http://localhost:8765`.
 | 🟠 Claude Code | `~/.claude/projects/` | ✅ |
 | 🔵 Codex CLI | `~/.codex/sessions/` | ✅ |
 | 🟢 OpenCode | `~/.local/share/opencode/` | ✅ |
-| 🟢 deveco | `~/.local/share/deveco/` | ✅ |
-| 🟢 codeagent | `~/.local/share/codeagent/` | ✅ |
 
 ### Tech Stack
 
