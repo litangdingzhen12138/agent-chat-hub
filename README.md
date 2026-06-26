@@ -86,14 +86,14 @@
 
 **Windows:**
 ```bash
-git clone https://github.com/YOUR_USERNAME/agent-chat-hub.git
+git clone https://github.com/litangdingzhen12138/agent-chat-hub.git
 cd agent-chat-hub
 start.bat
 ```
 
 **macOS / Linux:**
 ```bash
-git clone https://github.com/YOUR_USERNAME/agent-chat-hub.git
+git clone https://github.com/litangdingzhen12138/agent-chat-hub.git
 cd agent-chat-hub
 chmod +x start.sh
 ./start.sh
@@ -103,7 +103,7 @@ chmod +x start.sh
 
 ```bash
 # 克隆项目
-git clone https://github.com/YOUR_USERNAME/agent-chat-hub.git
+git clone https://github.com/litangdingzhen12138/agent-chat-hub.git
 cd agent-chat-hub
 
 # 安装依赖
