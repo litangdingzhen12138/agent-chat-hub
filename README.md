@@ -46,6 +46,7 @@
 - 用户问题靠右，AI 回答靠左，清晰区分
 - 代码高亮，Markdown 完整渲染
 - 思考过程、工具调用默认折叠，点击展开
+- **对话概览（Minimap）** — 消息区左侧显示纵向小横线概览，每条线代表一个用户问题，悬浮显示问题摘要，点击快速跳转
 
 ### 📁 目录树，一目了然
 按项目目录自动归类会话，层级分明：
@@ -162,6 +163,7 @@ pkill -f "python -m app.main"
 | 📤 文件上传 | 支持上传单个文件或整个文件夹 |
 | ↔️ 可调宽度 | 拖动调整侧边栏宽度 |
 | 📂 折叠/展开 | 一键折叠或展开所有目录 |
+| 📊 对话概览 | 消息区左侧 minimap，悬浮查看问题摘要，点击快速跳转 |
 
 ## ⚙️ 配置
 
@@ -251,7 +253,7 @@ If you frequently use command-line AI Agent tools but miss the clean chat interf
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/agent-chat-hub.git
+git clone https://github.com/litangdingzhen12138/agent-chat-hub.git
 cd agent-chat-hub
 
 # Windows

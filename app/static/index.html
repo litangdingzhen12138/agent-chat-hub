@@ -92,6 +92,84 @@
         /* 拖动时防止选中文字 */
         body.resizing { user-select: none; cursor: col-resize !important; }
         body.resizing * { cursor: col-resize !important; }
+
+        /* 对话概览 minimap */
+        #minimap-container {
+            position: relative;
+            width: 20px;
+            flex-shrink: 0;
+            cursor: pointer;
+            background: transparent;
+            display: none;
+            /* flex 纵向居中 */
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 10px 0;
+        }
+        #minimap-container:not(.hidden) {
+            display: flex !important;
+        }
+        .minimap-line {
+            width: 14px;
+            height: 6px;
+            background: #3b4a60;
+            border-radius: 3px;
+            transition: background 0.15s, transform 0.12s, box-shadow 0.15s;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+        .minimap-line:hover {
+            background: #60a5fa;
+            transform: scaleX(1.4);
+            box-shadow: 0 0 6px rgba(96,165,250,0.4);
+        }
+        .minimap-line.active {
+            background: #60a5fa;
+            box-shadow: 0 0 4px rgba(96,165,250,0.5);
+        }
+        .minimap-tooltip {
+            position: fixed;
+            left: 30px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 10px 14px;
+            max-width: 360px;
+            min-width: 160px;
+            font-size: 0.78rem;
+            color: #cbd5e1;
+            line-height: 1.6;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s;
+            z-index: 100;
+            white-space: pre-wrap;
+            word-break: break-word;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+        .minimap-tooltip.visible {
+            opacity: 1;
+        }
+        .minimap-tooltip .tooltip-label {
+            font-size: 0.68rem;
+            color: #64748b;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .minimap-container-outer {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+        }
+        #messages-scroll-area {
+            flex: 1;
+            overflow-y: auto;
+            min-width: 0;
+        }
     </style>
 </head>
 <body class="bg-dark-950 text-dark-100 h-screen flex overflow-hidden">
@@ -169,24 +247,31 @@
         </header>
 
         <!-- 消息区域 -->
-        <div id="messages-container" class="flex-1 overflow-y-auto px-6 py-4">
-            <!-- 欢迎 -->
-            <div id="welcome" class="flex flex-col items-center justify-center h-full text-dark-400">
-                <svg class="w-16 h-16 mb-3 text-dark-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
-                </svg>
-                <h3 class="text-lg font-semibold text-dark-300 mb-1">Agent Chat Visualizer</h3>
-                <p class="text-sm text-center">从左侧选择会话，或上传聊天记录文件</p>
-            </div>
+        <div class="flex-1 flex min-h-0">
+            <!-- 对话概览 minimap -->
+            <div id="minimap-container" class="hidden"></div>
+            <div id="minimap-tooltip" class="minimap-tooltip"></div>
 
-            <!-- 搜索结果 -->
-            <div id="search-results" class="hidden max-w-3xl mx-auto">
-                <h3 class="text-sm font-semibold mb-3">搜索结果</h3>
-                <div id="search-results-list" class="space-y-2"></div>
-            </div>
+            <!-- 消息滚动区 -->
+            <div id="messages-scroll-area" class="flex-1 overflow-y-auto px-6 py-4">
+                <!-- 欢迎 -->
+                <div id="welcome" class="flex flex-col items-center justify-center h-full text-dark-400">
+                    <svg class="w-16 h-16 mb-3 text-dark-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                    </svg>
+                    <h3 class="text-lg font-semibold text-dark-300 mb-1">Agent Chat Visualizer</h3>
+                    <p class="text-sm text-center">从左侧选择会话，或上传聊天记录文件</p>
+                </div>
 
-            <!-- 消息列表 -->
-            <div id="messages-list" class="hidden max-w-3xl mx-auto"></div>
+                <!-- 搜索结果 -->
+                <div id="search-results" class="hidden max-w-3xl mx-auto">
+                    <h3 class="text-sm font-semibold mb-3">搜索结果</h3>
+                    <div id="search-results-list" class="space-y-2"></div>
+                </div>
+
+                <!-- 消息列表 -->
+                <div id="messages-list" class="hidden max-w-3xl mx-auto"></div>
+            </div>
         </div>
     </main>
 
@@ -580,16 +665,22 @@
         const container = document.getElementById('messages-list');
         const welcome = document.getElementById('welcome');
         const searchResults = document.getElementById('search-results');
+        const minimap = document.getElementById('minimap-container');
         welcome.classList.add('hidden');
         searchResults.classList.add('hidden');
         container.classList.remove('hidden');
         container.innerHTML = '<div class="flex justify-center py-8"><div class="loading-spinner"></div></div>';
+
+        // 显示 minimap
+        minimap.classList.remove('hidden');
+        minimap.innerHTML = '';
 
         try {
             const data = await API.getMessages(sourceId, sessionId);
             renderMessages(data.messages);
         } catch (e) {
             container.innerHTML = '<div class="text-center text-red-400 py-8">加载失败</div>';
+            minimap.classList.add('hidden');
         }
     }
 
@@ -598,13 +689,16 @@
         const container = document.getElementById('messages-list');
         if (!messages.length) { container.innerHTML = '<div class="text-center text-dark-400 py-8">无消息</div>'; return; }
 
+        // 用于 minimap 的用户消息索引
+        let userMsgIndex = 0;
+        const minimapData = []; // { index, text }
+
         let html = '';
         for (const msg of messages) {
             const role = msg.role; // 'user' | 'assistant' | 'tool'
 
             // 工具消息默认折叠，不单独展示气泡
             if (role === 'tool') {
-                // 工具结果作为折叠块，归属到上一条助手消息
                 continue;
             }
 
@@ -619,9 +713,8 @@
                 }
             }
 
-            // 没有正文内容的消息跳过（纯 tool_use 的 assistant 消息）
+            // 没有正文内容的消息跳过
             if (mainBlocks.length === 0 && detailBlocks.length > 0) {
-                // 把 tool_use 也跳过，只在有正文回答时才展示
                 continue;
             }
 
@@ -633,10 +726,13 @@
             const timeStr = msg.timestamp ? formatShortTime(msg.timestamp) : '';
             const modelStr = msg.model ? ` · ${msg.model}` : '';
 
-            html += `<div class="msg-row ${rowClass}">`;
+            // 用户消息添加 data 属性用于 minimap 定位
+            const msgAttr = isUser ? ` data-user-idx="${userMsgIndex}"` : '';
+
+            html += `<div class="msg-row ${rowClass}"${msgAttr}>`;
             html += `<div class="msg-bubble ${bubbleClass}">`;
 
-            // 角色标签 + 时间（用户标签在右，AI标签在左）
+            // 角色标签 + 时间
             html += `<div class="flex items-center gap-1.5 mb-1.5 ${isUser ? 'justify-end' : ''}">
                 <span class="text-xs">${roleIcon}</span>
                 <span class="text-[0.7rem] ${isUser ? 'text-blue-300' : 'text-dark-400'}">${roleLabel}</span>
@@ -654,11 +750,23 @@
             }
 
             html += '</div></div>';
+
+            // 收集用户消息用于 minimap
+            if (isUser) {
+                const previewText = mainBlocks.map(b => b.content).join('\n').slice(0, 200);
+                minimapData.push({ index: userMsgIndex, text: previewText });
+                userMsgIndex++;
+            }
         }
 
         container.innerHTML = html;
         container.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
-        document.getElementById('messages-container').scrollTop = 0;
+
+        const scrollArea = document.getElementById('messages-scroll-area');
+        scrollArea.scrollTop = 0;
+
+        // 填充 minimap
+        populateMinimap(minimapData);
     }
 
     // ============ 渲染折叠块 ============
@@ -827,6 +935,109 @@
         if (!text || !q) return esc(text);
         const r = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
         return esc(text).replace(r, '<mark class="bg-yellow-600/30 text-yellow-200 rounded px-0.5">$1</mark>');
+    }
+
+    // ============ 对话概览 minimap ============
+    let _minimapData = [];
+    let _minimapTooltipTimer = null;
+    let _minimapScrollHandler = null;
+
+    function populateMinimap(data) {
+        _minimapData = data;
+        const minimap = document.getElementById('minimap-container');
+
+        if (!data.length) {
+            minimap.classList.add('hidden');
+            return;
+        }
+
+        // flex 纵向居中布局，直接追加子元素
+        let html = '';
+        for (const item of data) {
+            html += `<div class="minimap-line" data-idx="${item.index}"
+                onmouseenter="showMinimapTooltip(event, ${item.index})"
+                onmouseleave="hideMinimapTooltip()"
+                onclick="scrollToUserMsg(${item.index})"></div>`;
+        }
+        minimap.innerHTML = html;
+
+        // 移除旧的 scroll listener，避免重复绑定
+        const scrollArea = document.getElementById('messages-scroll-area');
+        if (_minimapScrollHandler) {
+            scrollArea.removeEventListener('scroll', _minimapScrollHandler);
+        }
+        _minimapScrollHandler = syncMinimapHighlight;
+        scrollArea.addEventListener('scroll', _minimapScrollHandler);
+        syncMinimapHighlight();
+    }
+
+    function showMinimapTooltip(event, idx) {
+        const tooltip = document.getElementById('minimap-tooltip');
+        const item = _minimapData[idx];
+        if (!item) return;
+
+        const preview = item.text.length > 150 ? item.text.slice(0, 150) + '…' : item.text;
+        tooltip.innerHTML = `<div class="tooltip-label">问题 ${idx + 1} / ${_minimapData.length}</div>${esc(preview)}`;
+
+        // 定位：在 minimap 右侧，跟随鼠标 Y
+        const rect = event.target.getBoundingClientRect();
+        tooltip.style.left = (rect.right + 8) + 'px';
+        tooltip.style.top = Math.max(8, rect.top - 10) + 'px';
+
+        // 确保不超出屏幕底部
+        requestAnimationFrame(() => {
+            const tRect = tooltip.getBoundingClientRect();
+            if (tRect.bottom > window.innerHeight - 8) {
+                tooltip.style.top = Math.max(8, window.innerHeight - tRect.height - 8) + 'px';
+            }
+        });
+
+        clearTimeout(_minimapTooltipTimer);
+        tooltip.classList.add('visible');
+    }
+
+    function hideMinimapTooltip() {
+        const tooltip = document.getElementById('minimap-tooltip');
+        tooltip.classList.remove('visible');
+    }
+
+    function scrollToUserMsg(idx) {
+        const row = document.querySelector(`.msg-row[data-user-idx="${idx}"]`);
+        if (!row) return;
+        const scrollArea = document.getElementById('messages-scroll-area');
+        const containerRect = scrollArea.getBoundingClientRect();
+        const rowRect = row.getBoundingClientRect();
+        // 滚动到让该消息出现在可视区域偏上的位置
+        const offset = rowRect.top - containerRect.top - 60;
+        scrollArea.scrollBy({ top: offset, behavior: 'smooth' });
+
+        // 临时高亮
+        row.style.transition = 'box-shadow 0.3s';
+        row.style.boxShadow = '0 0 0 2px rgba(96,165,250,0.6)';
+        setTimeout(() => { row.style.boxShadow = ''; }, 1500);
+    }
+
+    function syncMinimapHighlight() {
+        const scrollArea = document.getElementById('messages-scroll-area');
+        const lines = document.querySelectorAll('.minimap-line');
+        if (!lines.length) return;
+
+        const containerTop = scrollArea.scrollTop;
+        const containerH = scrollArea.clientHeight;
+
+        for (const line of lines) {
+            const idx = parseInt(line.dataset.idx);
+            const row = document.querySelector(`.msg-row[data-user-idx="${idx}"]`);
+            if (!row) continue;
+
+            const rowTop = row.offsetTop;
+            const rowH = row.offsetHeight;
+            const rowCenter = rowTop + rowH / 2;
+
+            // 判断该消息是否在可视区域内
+            const visible = rowCenter >= containerTop && rowCenter <= containerTop + containerH;
+            line.classList.toggle('active', visible);
+        }
     }
 
     // ============ 侧边栏拖动调整宽度 ============
