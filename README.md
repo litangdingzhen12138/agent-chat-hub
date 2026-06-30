@@ -288,6 +288,9 @@ MIT License
 
 ## 📋 更新日志
 
+### v1.0.1 (2026-06-30)
+- 🎨 **聊天区域加宽** — 消息容器宽度 768px → 1024px，气泡 max-width 75% → 90%，减少屏幕空白
+
 详见 [CHANGELOG.md](CHANGELOG.md)
 
 ---
